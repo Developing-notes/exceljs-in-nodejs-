@@ -1,0 +1,115 @@
+const express = require('express');
+const Excel = require('exceljs');
+
+const app = express();
+
+app.get('/createExcel', function (req, res, next) {
+  var workbook = new Excel.Workbook();
+
+  workbook.creator = 'Me';
+  workbook.lastModifiedBy = 'Her';
+  workbook.created = new Date(1985, 8, 30);
+  workbook.modified = new Date();
+  workbook.lastPrinted = new Date(2016, 9, 27);
+  workbook.properties.date1904 = true;
+
+  workbook.views = [
+    {
+      x: 0, y: 0, width: 10000, height: 20000,
+      firstSheet: 0, activeTab: 1, visibility: 'visible'
+    }
+  ];
+  var worksheet = workbook.addWorksheet('My Sheet');
+
+  // Define columns for User Record
+  const userRecordColumns = [
+    { header: 'ID', key: 'userId', width: 10, alignment: { horizontal: 'center' } },
+    { header: 'Name', key: 'userName', width: 20, alignment: { horizontal: 'center' } },
+    { header: 'DOB', key: 'userDob', width: 15, alignment: { horizontal: 'center' } },
+  ];
+
+  // Define columns for User Salary Record
+  const userSalaryColumns = [
+    { header: 'ID', key: 'userId', width: 10, alignment: { horizontal: 'center' } },
+    { header: 'Salary', key: 'userSalary', width: 15, alignment: { horizontal: 'center' } },
+    { header: 'Currency', key: 'userCurrency', width: 15, alignment: { horizontal: 'center' } },
+  ];
+
+  // Add columns to the worksheet for User Record
+  worksheet.columns = [...userRecordColumns];
+
+  // Sample data for User Record
+  const userData = [
+    { userId: 1, userName: 'John Doe', userDob: new Date(1970, 1, 1) },
+    { userId: 2, userName: 'Jane Doe', userDob: new Date(1965, 1, 7) },
+  ];
+
+  // Set the headers for the User Record table
+  userRecordColumns.forEach((col, index) => {
+    worksheet.getCell(2, index + 1).value = col.header;
+    worksheet.getCell(2, index + 1).alignment = { horizontal: 'center' };
+  });
+
+  // Add data for User Record
+  userData.forEach(rowData => {
+    worksheet.addRow(rowData);
+  });
+
+  // Add row spacing between tables
+  worksheet.addRow([]); // Add an empty row
+  worksheet.addRow([]); // Add another empty row
+
+  // Set the start row for the second table (User Salary Record)
+  const startRow = userData.length + 6; // Add 2 for header row and spacing
+
+  // Set headers for User Salary Record
+  userSalaryColumns.forEach((col, index) => {
+    worksheet.getCell(startRow, index + 1).value = col.header;
+    worksheet.getCell(startRow, index + 1).alignment = { horizontal: 'center' };
+    worksheet.getColumn(index + 1).width = col.width;
+  });
+
+  // Sample data for User Salary Record
+  const salaryData = [
+    { userId: 1, userSalary: 50000, userCurrency: 'USD' },
+    { userId: 2, userSalary: 60000, userCurrency: 'EUR' },
+  ];
+
+  // Add data for User Salary Record
+  salaryData.forEach((rowData, index) => {
+    worksheet.addRow();
+    const currentRow = worksheet.lastRow;
+    userSalaryColumns.forEach((col, colIndex) => {
+      currentRow.getCell(colIndex + 1).value = rowData[col.key];
+      currentRow.getCell(colIndex + 1).alignment = { horizontal: 'center' };
+    });
+  });
+
+  // Set the title for the User Record table to span the entire width
+  worksheet.mergeCells(1, 1, 1, userRecordColumns.length);
+  worksheet.getCell(1, 1).value = 'User Record'; // Set the title
+  worksheet.getCell(1, 1).alignment = { horizontal: 'center' }; // Center align the title
+  worksheet.getCell(1, 1).font = { bold: true, size: 16 }; // Make the title bold and increase font size
+
+  // Set the title for the User Salary Record table to span the entire width
+  worksheet.mergeCells(startRow - 2, 1, startRow - 2, userSalaryColumns.length);
+  worksheet.getCell(startRow - 2, 1).value = 'User Salary Record'; // Set the title
+  worksheet.getCell(startRow - 2, 1).alignment = { horizontal: 'center' }; // Center align the title
+  worksheet.getCell(startRow - 2, 1).font = { bold: true, size: 16 }; // Make the title bold and increase font size
+
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader("Content-Disposition", "attachment; filename=Report.xlsx");
+  workbook.xlsx.write(res)
+  .then(function () {
+    console.log('File write done........');
+    res.send('Excel file generated successfully'); // Send success message
+  })
+  .catch(function (error) {
+    console.error('Error generating Excel file:', error);
+    res.status(500).send('Internal Server Error'); // Send an error response if there's an issue
+  });
+});
+
+app.listen(8000, () => {
+  console.log('Server is running on port 3000');
+});
